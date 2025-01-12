@@ -1,0 +1,32 @@
+services:
+
+  db:
+    image: postgres
+    restart: always
+    ports:
+      - 5432:5432
+    # set shared memory limit when using docker-compose
+    shm_size: 128mb
+
+    environment:
+      POSTGRES_USER: pywow_admin
+      POSTGRES_PASSWORD: security_is_a_myth
+      POSTGRES_DB: wow_char_tracker
+
+    healthcheck:
+      test: ["CMD","pg_isready","-U","wow_char_tracker"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres.conf:/etc/postgresql/postgresql.conf
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+volumes:
+  pgdata:

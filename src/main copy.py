@@ -1,4 +1,3 @@
-import logging.handlers
 from pathlib import Path
 import os
 import logging
@@ -9,17 +8,15 @@ from datetime import date
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from tqdm.auto import tqdm
-from tqdm.contrib.logging import logging_redirect_tqdm
 from data_models import WoWCharacter, GearLog, CharacterProgress, Base
-import wow_api_models as wow
-
 
 log = logging.getLogger(__name__)
 logging.basicConfig(encoding="utf-8", level=logging.INFO)
-logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
-logging.getLogger("sqlalchemy.engine.Engine").setLevel(logging.WARNING)
+logging.getLogger("urllib3.connectionpool").level = logging.WARNING
+logging.getLogger("sqlalchemy.engine.Engine").level = logging.WARNING
 
-OAUTH_TOKEN:str = ""
+
+OAUTH_TOKEN = ""
 
 list_of_characters = [
     "us|icecrown|littlegizmo",
@@ -40,9 +37,7 @@ client_secret = os.getenv("WOW_CLIENT_SECRET", "OrThisWillNotWork")
 
 def get_oauth_token(id: str, secret: str) -> Dict:
     base_url = "https://oauth.battle.net/token"
-    data = {
-        "grant_type": "client_credentials",
-    }
+    data = {"grant_type": "client_credentials"}
 
     response = requests.post(base_url, data=data, auth=(id, secret))
     return response.json()
@@ -88,7 +83,7 @@ def get_engine():
 
     return create_engine(
         f"postgresql+psycopg://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}",
-        echo=False
+        echo=True
     )
     
 
@@ -105,21 +100,16 @@ def main():
     for character in tqdm(list_of_characters):
         log.debug(character)
         with Session(engine) as db_sess:
-            this_character = db_sess.scalar(
-                select(WoWCharacter)
-                .where(WoWCharacter.key == character)
-            )
+            this_character = db_sess.scalar(select(WoWCharacter).where(WoWCharacter.key == character))
 
             if not this_character:
                 region, realm, character_name = character.split('|')
-
                 this_character = WoWCharacter(
                     key = character,
                     region = region,
                     name = character_name,
-                    realm = realm,
-                ) # type: ignore
-
+                    realm = realm
+                )
                 db_sess.add(this_character)
                 db_sess.commit()
             else:
@@ -127,25 +117,9 @@ def main():
                 realm = this_character.realm
                 character_name = this_character.name
 
-            l_profile = wow.CharacterProfileSummary(
-                region=region,
-                realm=realm,
-                character_name=character_name,
-                token=OAUTH_TOKEN
-            )
-
-            try:
-                l_profile.retrieve()
-
-                this_character.level = l_profile.level
-            except AttributeError as e:
-                log.error(f'Could not retrieve data for {character_name}.')
-                log.error(e)
-
             output_file = Path(output_dir, date.today().isoformat(), region, realm, character_name, 'equipment.json')
             
             equipment = get_equipment_for_character(region, realm, character_name)
-            
             slots = [item["slot"]["type"] for item in equipment["equipped_items"]]
 
             structured_gear = {}
@@ -243,5 +217,4 @@ def main():
 
 
 if __name__ == "__main__":
-    with logging_redirect_tqdm():
-        main()
+    main()
