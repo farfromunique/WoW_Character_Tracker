@@ -222,6 +222,25 @@ class WoWCharacterFaction(WoWDataApiReturnPlaceholder):
             raise AttributeError(f"The passed object's {obj[self.default_field]} key is of type `{type(obj[self.default_field])}`. Expected either Dict or str.")
 
 
+class WoWEquipmentItem(WoWDataApiReturnPlaceholder):
+    item_id: int
+    sockets: List[str]
+    _socket_format: str = '{type} socket, holding {socketed_item}'
+    slot: Literal['head', 'neck', 'shoulder', 'chest', 'waist', 'legs', 'feet', 'wrist', 'hands', 'finger_1', 'finger_2', 'trinket_1', 'trinket_2','back', 'main_hand', 'off_hand']
+    quality: Literal['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary']
+    name: str
+    item_class: str
+    item_subclass: str
+    level: int
+
+    def __str__(self) -> str:
+        return f'{self.name} ({self.level})'
+    
+    def __repr__(self) -> str:
+        return f'<{self.__class__.__name__} item_id={self.item_id}, level={self.level}, name={self.name}'
+    
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
 
 # Endpoints
 class WoWRetailApiEndpoint:
@@ -416,6 +435,11 @@ class CharacterProfileSummary(WoWRetailApiEndpoint):
                     setattr(self, key, out)
                     self._log.debug(f'self.{key} = {getattr(self, key)}')
                     processed_keys.append(key)
+                else:
+                    self._log.debug(f"Didn't find a class for {key}")
+                    self._log.debug('-'*50)
+                    self._log.debug(resp[key])
+                    self._log.debug('-'*50)
         
         remaining_keys = resp.keys() - processed_keys
 
@@ -424,3 +448,8 @@ class CharacterProfileSummary(WoWRetailApiEndpoint):
                 setattr(self, key, resp[key])
 
         return resp
+
+class CharacterEquipment(WoWRetailApiEndpoint):
+    character: CharacterProfileSummary
+    equipped_items: List[WoWEquipmentItem]
+    
